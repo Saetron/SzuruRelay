@@ -168,15 +168,16 @@ docker run -p 9000:9000 -e SZURUBOORU_URL=http://host.docker.internal:8080/ szur
 
 The GitHub Actions workflow at [`.github/workflows/docker-build.yml`](.github/workflows/docker-build.yml) manages automated build and packaging:
 
-- **Trigger**: Manual trigger only via `workflow_dispatch`.
+- **Trigger**: Manual trigger only via `workflow_dispatch` (with optional `bump_type` input: `none` [default], `patch`, `minor`, `major`).
 - **Workflow Steps**:
   1. Checks out repository with full git history (`fetch-depth: 0`).
   2. Sets up Python 3.11, installs `requirements.txt`, and runs test suite (`pytest`).
-  3. Automatically bumps patch version in `VERSION`.
-  4. Commits `VERSION` with message `chore(release): bump version to X.Y.Z [skip ci]`.
-  5. Creates and pushes git tag `vX.Y.Z`.
-  6. Builds multi-platform Docker image and pushes to GitHub Container Registry (`ghcr.io/${{ github.repository }}`).
+  3. Reads `VERSION` and optionally bumps `patch`, `minor`, or `major` if `bump_type` is not `none`.
+  4. If bumped, commits `VERSION` with message `chore(release): bump version to X.Y.Z [skip ci]`.
+  5. Creates and pushes git tag `vX.Y.Z` if it does not already exist.
+  6. Builds Docker image and pushes to GitHub Container Registry (`ghcr.io/${{ github.repository }}`).
   7. Tags Docker images with `:latest`, `:X.Y.Z`, and semver patterns.
+
 
 ---
 

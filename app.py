@@ -13,7 +13,8 @@ from routes.admin import admin_router
 from services.http_client import close_http_client
 
 VERSION_FILE = Path(__file__).parent / "VERSION"
-__version__ = VERSION_FILE.read_text().strip() if VERSION_FILE.exists() else "0.2.0"
+__version__ = VERSION_FILE.read_text().strip() if VERSION_FILE.exists() else "2.1.0"
+
 
 
 @asynccontextmanager

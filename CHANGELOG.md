@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.0] - 2026-10-20
+
+### Added
+- **Configurable Release Workflow**: Added `bump_type` (`none`, `patch`, `minor`, `major`, default `none`) input to the GitHub Actions Docker release workflow (`.github/workflows/docker-build.yml`) so manual `VERSION` updates are respected without forced auto-incrementing.
+- **Path Suffix Utility**: Added `strip_json_suffix()` in `utils.py` using `str.removesuffix(".json")` to standardize `.json` path parameter handling across routes.
+- **Async Timing Decorator**: Extended `timing_decorator` in `services/timing.py` to support both synchronous and `async` coroutine functions.
+
+### Changed
+- **Concurrent Favorite Lookups**: Optimized `GET /favorites.json` (`routes/favorites.py`) to query multiple post IDs concurrently via `asyncio.gather` instead of sequentially awaiting each upstream request.
+- **Single-Pass Post Tag Conversion**: Refactored `convert_post_format` (`models/converters.py`) to categorize tags and build `tag_string` in a single loop, eliminating redundant tag iterations and per-post `Timer` overhead.
+- **Batch Domain Resolution**: Pre-computed `base_domain` once per post search batch in `routes/posts.py` rather than re-evaluating request headers twice per post.
+- **High-Resolution Monotonic Timers**: Switched `Timer` and `RequestTimer` (`services/timing.py`) to `time.perf_counter()`, added `__slots__`, and bypassed clock syscalls completely when timing logs are disabled.
+- **Pre-Allocated Lookup & Translation Tables**: Hoisted rating, sort, and MIME dictionaries as well as `str.maketrans` tables to module-level constants in `utils.py`, `routes/favorites.py`, and `routes/proxy.py`.
+- **Deduplicated User & Auth Logic**: Consolidated user lookup with search fallback (`_fetch_szuru_user`) in `routes/users.py`, credential extraction in `services/auth.py`, and configuration parsing helpers in `config.py`.
+
+### Fixed
+- **Streaming Response Cleanup**: Wrapped `backend_resp.aclose` in Starlette `BackgroundTask` inside `routes/proxy.py` so upstream HTTP streams close cleanly without raising a `TypeError` after streaming completes.
+- **Proxy Path Traversal Hardening**: Rejected backslashes (`\`) and null bytes (`\x00`) in addition to `..` and leading slashes in `routes/proxy.py`.
+
+---
+
+## [0.2.1] - 2026-10-20
+
+### Changed
+- Updated Docker image references in documentation to `ghcr.io/saetron/szururelay:latest` and removed legacy README banner.
+
+---
+
 ## [0.2.0] - 2026-10-20
 
 ### Added
