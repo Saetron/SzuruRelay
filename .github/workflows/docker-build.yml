@@ -48,7 +48,7 @@ jobs:
           if [ -f VERSION ]; then
             CURRENT_VERSION=$(tr -d '\n\r ' < VERSION)
           else
-            CURRENT_VERSION="2.1.0"
+            CURRENT_VERSION="2.1.1"
           fi
 
           echo "Current version: $CURRENT_VERSION"

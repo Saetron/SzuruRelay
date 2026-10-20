@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.1] - 2026-10-21
+
+### Changed
+- **Dependency Upgrades**:
+  - Upgraded `fastapi` to `>=0.143.3`.
+  - Upgraded `uvicorn[standard]` to `>=0.54.0`.
+  - Upgraded `python-multipart` to `>=0.0.32`.
+  - Upgraded `pytest` to `>=9.1.1`.
+  - Upgraded `pytest-asyncio` to `>=1.4.0`.
+- **Docker Base Image**: Updated `Dockerfile` base image from `python:3.11-slim` to `python:3.15-slim`.
+- **GitHub Actions Workflows**: Upgraded CI/CD actions in `docker-build.yml`:
+  - `actions/checkout` to `v7`
+  - `actions/setup-python` to `v7`
+  - `docker/login-action` to `v4`
+  - `docker/metadata-action` to `v6`
+  - `docker/build-push-action` to `v7`
+
+### Added
+- **Project Acknowledgements**: Added attribution to [MILES-FAN](https://github.com/MILES-FAN) and the original `Szuru-Dan` project in `README.md`.
+
+---
+
 ## [2.1.0] - 2026-10-20
 
 ### Added

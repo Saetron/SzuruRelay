@@ -23,7 +23,7 @@ SzuruRelay/
 ├── app.py                      # Application factory (create_app), lifespan context, /health route
 ├── config.py                   # Configuration management (environment variables & config.ini)
 ├── config_.ini                 # Template INI configuration file
-├── Dockerfile                  # Production container definition (Python 3.11-slim, Uvicorn)
+├── Dockerfile                  # Production container definition (Python 3.15-slim, Uvicorn)
 ├── docker-compose.yml          # Docker Compose configuration sample
 ├── requirements.txt            # Python dependencies (FastAPI, Uvicorn, HTTPX, Pytest)
 ├── pytest.ini                  # Pytest test discovery settings
