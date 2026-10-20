@@ -28,6 +28,7 @@ SzuruRelay/
 ├── requirements.txt            # Python dependencies (FastAPI, Uvicorn, HTTPX, Pytest)
 ├── pytest.ini                  # Pytest test discovery settings
 ├── VERSION                     # Semantic version tracking file
+├── CHANGELOG.md                # Project version history and change logs
 ├── models/
 │   └── converters.py           # Converters for posts, tags, users, ratings, and categories
 ├── routes/
@@ -199,3 +200,8 @@ The GitHub Actions workflow at [`.github/workflows/docker-build.yml`](.github/wo
    - Keep translation logic in `models/converters.py` and helper functions in `services/` or `utils.py`.
    - Register any new routers inside `create_app()` in `app.py`.
    - Use `services.http_client.get_http_client()` for upstream asynchronous HTTP communication.
+
+5. **Changelog Maintenance**:
+   - Maintain [`CHANGELOG.md`](CHANGELOG.md) according to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) standards and Semantic Versioning.
+   - For every notable change (features, bug fixes, breaking changes, refactors, dependency updates), document changes under the appropriate version heading (`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`).
+   - When bumping the version in `VERSION`, always ensure the corresponding version section is updated in `CHANGELOG.md`.
