@@ -29,5 +29,5 @@ EXPOSE 9000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:9000/health || exit 1
 
-# Run with Gunicorn production WSGI server
-CMD ["gunicorn", "-w", "2", "-k", "gthread", "--threads", "4", "-b", "0.0.0.0:9000", "app:create_app()"]
+# Run with Uvicorn production ASGI server
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "9000", "--workers", "2"]

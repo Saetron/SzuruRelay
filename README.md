@@ -12,7 +12,7 @@ A production-ready API translation proxy that maps Szurubooru API endpoints into
 - **Client Support**: Validated with [AnimeBoxes](https://www.animebox.es/) (iOS), [Boorusama](https://github.com/khoadng/Boorusama) (Android/Desktop), and [BooruHub / Flexbooru](https://github.com/flexbooru/flexbooru) (Android).
 - **Reverse Proxy Media Streaming**: Built-in HTTP range request proxying for fast image loading and video streaming.
 - **12-Factor Configuration**: Configure via environment variables or `config.ini`.
-- **Production WSGI Server**: Powered by Gunicorn with connection pooling.
+- **Production ASGI Server**: Powered by FastAPI, Uvicorn, and async HTTPX connection pooling.
 
 ---
 
@@ -70,8 +70,8 @@ pip install -r requirements.txt
 #### 3. Run the server
 ```bash
 python app.py
-# Or with Gunicorn:
-gunicorn -w 2 -k gthread --threads 4 -b 0.0.0.0:9000 "app:create_app()"
+# Or directly with Uvicorn:
+uvicorn app:app --host 0.0.0.0 --port 9000 --workers 2
 ```
 
 ---
