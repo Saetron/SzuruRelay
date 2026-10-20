@@ -1,18 +1,27 @@
+from typing import Optional
 from urllib.parse import urljoin
-from flask import request
+from starlette.requests import Request
 from config import config
 
 
-def get_current_domain() -> str:
+def get_current_domain(request: Optional[Request] = None) -> str:
     """Dynamically get the base URL of the current request or configured domain"""
-    if config.REVERSE_PROXY_MODE:
-        scheme = request.scheme
-        host = request.host
+    if config.REVERSE_PROXY_MODE and request:
+        scheme = request.headers.get("x-forwarded-proto") or request.url.scheme
+        host = (
+            request.headers.get("x-forwarded-host")
+            or request.headers.get("host")
+            or request.url.netloc
+        )
         return f"{scheme}://{host}/"
     return config.DOMAIN_URL
 
 
-def build_resource_url(resource_path: str) -> str:
+def build_resource_url(
+    resource_path: str,
+    request: Optional[Request] = None,
+    base_domain: Optional[str] = None,
+) -> str:
     """Build full resource URL cleanly without double slashes"""
     if not resource_path:
         return ""
@@ -20,7 +29,6 @@ def build_resource_url(resource_path: str) -> str:
     if resource_path.startswith("http://") or resource_path.startswith("https://"):
         return resource_path
 
-    base_domain = get_current_domain()
-    # Strip leading slash on resource path if base_domain ends with slash to avoid replacing path
+    base = base_domain or get_current_domain(request)
     clean_path = resource_path.lstrip("/")
-    return urljoin(base_domain, clean_path)
+    return urljoin(base, clean_path)

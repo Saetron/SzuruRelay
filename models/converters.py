@@ -91,13 +91,22 @@ def convert_user_format(user_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def convert_post_format(szuru_post: Dict[str, Any], login: Optional[str] = None) -> Dict[str, Any]:
+def convert_post_format(
+    szuru_post: Dict[str, Any],
+    login: Optional[str] = None,
+    request: Optional[Any] = None,
+    base_domain: Optional[str] = None,
+) -> Dict[str, Any]:
     """Convert a Szurubooru post object to a Danbooru-compatible post object"""
     with Timer("Build resource URLs"):
         raw_content_url = szuru_post.get("contentUrl", "")
         raw_thumb_url = szuru_post.get("thumbnailUrl", "")
-        content_url = build_resource_url(raw_content_url)
-        thumbnail_url = build_resource_url(raw_thumb_url)
+        content_url = build_resource_url(
+            raw_content_url, request=request, base_domain=base_domain
+        )
+        thumbnail_url = build_resource_url(
+            raw_thumb_url, request=request, base_domain=base_domain
+        )
         ext = content_url.split("?")[0].split(".")[-1].lower() if "." in content_url else "jpg"
 
     with Timer("Process tags"):
