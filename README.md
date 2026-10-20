@@ -1,10 +1,6 @@
 # SzuruRelay
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Saetron/SzuruRelay/main/assets/banner.png" alt="SzuruRelay Banner" width="600" onerror="this.style.display='none'"/>
-</p>
-
-<p align="center">
   <a href="https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12"><img src="https://img.shields.io/badge/License-EUPL%201.2-blue.svg" alt="License: EUPL 1.2"/></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white" alt="Python 3.11+"/></a>
   <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white" alt="FastAPI"/></a>
