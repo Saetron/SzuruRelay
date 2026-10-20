@@ -1,5 +1,6 @@
+import asyncio
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 import httpx
@@ -7,9 +8,24 @@ from config import config
 from services.auth import get_auth_headers
 from models.converters import is_post_favorited_by
 from services.http_client import get_http_client
+from utils import strip_json_suffix
 
 logger = logging.getLogger(__name__)
 favorites_router = APIRouter()
+
+_ID_SPLIT_TABLE = str.maketrans({",": " ", "+": " "})
+
+
+def _build_favorite_entry(pid: int, created_at: str) -> Dict[str, Any]:
+    return {
+        "id": pid,
+        "user_id": 1,
+        "post_id": pid,
+        "created_at": created_at,
+        "updated_at": created_at,
+        "score": 1,
+        "is_deleted": False,
+    }
 
 
 async def _extract_post_id(request: Request) -> Optional[int]:
@@ -37,7 +53,7 @@ async def _extract_post_id(request: Request) -> Optional[int]:
             if "post_id=" in raw_body:
                 for part in raw_body.split("&"):
                     if part.startswith("post_id="):
-                        post_id = part.split("=", 1)[1]
+                        post_id = part.partition("=")[2]
                         break
         except Exception:
             pass
@@ -91,7 +107,7 @@ async def create_favorite(request: Request):
 @favorites_router.delete("/favorites/{post_id}.json")
 @favorites_router.delete("/favorites/{post_id}")
 async def delete_favorite(post_id: str, request: Request):
-    clean_id = post_id[:-5] if post_id.endswith(".json") else post_id
+    clean_id = strip_json_suffix(post_id)
     try:
         pid = int(clean_id)
     except ValueError:
@@ -118,6 +134,27 @@ async def delete_favorite(post_id: str, request: Request):
         return JSONResponse({"message": "API request failed"}, status_code=500)
 
 
+async def _check_post_favorite(
+    client: httpx.AsyncClient,
+    pid: int,
+    headers: dict,
+    login: Optional[str],
+) -> Optional[Dict[str, Any]]:
+    try:
+        res = await client.get(
+            f"{config.SZURUBOORU_API_URL}/post/{pid}",
+            headers=headers,
+            timeout=5.0,
+        )
+        if res.status_code == 200:
+            szuru_post = res.json()
+            if is_post_favorited_by(szuru_post, login):
+                return _build_favorite_entry(pid, szuru_post.get("creationTime", ""))
+    except httpx.RequestError:
+        pass
+    return None
+
+
 @favorites_router.get("/post_votes.json")
 @favorites_router.get("/post_votes")
 @favorites_router.get("/favorites.json")
@@ -131,43 +168,21 @@ async def get_favorites(request: Request):
         or ""
     )
 
-    clean_ids = []
-    if raw_post_ids:
-        # Split by comma, plus, or space
-        normalized = raw_post_ids.replace(",", " ").replace("+", " ")
-        for item in normalized.split():
-            item_str = item.strip()
-            if item_str.isdigit():
-                clean_ids.append(int(item_str))
+    clean_ids = [
+        int(item)
+        for item in raw_post_ids.translate(_ID_SPLIT_TABLE).split()
+        if item.isdigit()
+    ] if raw_post_ids else []
 
     favorites = []
     client = get_http_client()
 
-    # If specific post IDs were requested, check them
+    # If specific post IDs were requested, check them concurrently
     if clean_ids:
-        for pid in clean_ids:
-            try:
-                res = await client.get(
-                    f"{config.SZURUBOORU_API_URL}/post/{pid}",
-                    headers=headers,
-                    timeout=5.0,
-                )
-                if res.status_code == 200:
-                    szuru_post = res.json()
-                    if is_post_favorited_by(szuru_post, login):
-                        favorites.append(
-                            {
-                                "id": pid,
-                                "user_id": 1,
-                                "post_id": pid,
-                                "created_at": szuru_post.get("creationTime", ""),
-                                "updated_at": szuru_post.get("creationTime", ""),
-                                "score": 1,
-                                "is_deleted": False,
-                            }
-                        )
-            except httpx.RequestError:
-                continue
+        results = await asyncio.gather(
+            *(_check_post_favorite(client, pid, headers, login) for pid in clean_ids)
+        )
+        favorites = [entry for entry in results if entry is not None]
     elif login:
         # If no specific post_ids requested, fetch user's favorites from Szurubooru
         try:
@@ -183,17 +198,10 @@ async def get_favorites(request: Request):
                     pid = post.get("id")
                     if pid:
                         favorites.append(
-                            {
-                                "id": pid,
-                                "user_id": 1,
-                                "post_id": pid,
-                                "created_at": post.get("creationTime", ""),
-                                "updated_at": post.get("creationTime", ""),
-                                "score": 1,
-                                "is_deleted": False,
-                            }
+                            _build_favorite_entry(pid, post.get("creationTime", ""))
                         )
         except httpx.RequestError as e:
             logger.warning(f"Failed to fetch favorites for user {login}: {e}")
 
     return JSONResponse(favorites, status_code=200)
+

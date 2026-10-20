@@ -1,14 +1,14 @@
 import logging
-from typing import Optional
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 import httpx
 from config import config
 from services.auth import get_auth_headers
 from models.converters import convert_post_format
-from utils import parse_query
+from utils import parse_query, strip_json_suffix
 from services.timing import Timer, RequestTimer
 from services.http_client import get_http_client
+from services.url_helper import get_current_domain
 
 logger = logging.getLogger(__name__)
 posts_router = APIRouter()
@@ -35,9 +35,7 @@ async def search_posts(request: Request):
         # Parse page
         raw_page = request.query_params.get("page", "1")
         try:
-            page = int(raw_page)
-            if page < 1:
-                page = 1
+            page = max(1, int(raw_page))
         except (ValueError, TypeError):
             page = 1
 
@@ -82,13 +80,13 @@ async def search_posts(request: Request):
 
         with Timer("Convert post formats"):
             results = szuru_posts.get("results", [])
-            danbooru_posts = []
-
-            for post in results:
-                converted_post = convert_post_format(
-                    post, login=login, request=request
+            base_domain = get_current_domain(request)
+            danbooru_posts = [
+                convert_post_format(
+                    post, login=login, request=request, base_domain=base_domain
                 )
-                danbooru_posts.append(converted_post)
+                for post in results
+            ]
 
         timer.checkpoint("All posts converted")
         timer.summary()
@@ -103,7 +101,7 @@ async def search_posts(request: Request):
 @posts_router.get("/posts/{post_id}.json")
 @posts_router.get("/posts/{post_id}")
 async def get_post(post_id: str, request: Request):
-    clean_id = post_id[:-5] if post_id.endswith(".json") else post_id
+    clean_id = strip_json_suffix(post_id)
     try:
         pid = int(clean_id)
     except ValueError:
@@ -134,8 +132,9 @@ async def get_post(post_id: str, request: Request):
     if response.status_code == 200:
         with Timer("Parse JSON and convert format"):
             szuru_post = response.json()
+            base_domain = get_current_domain(request)
             danbooru_post = convert_post_format(
-                szuru_post, login=login, request=request
+                szuru_post, login=login, request=request, base_domain=base_domain
             )
 
         timer.checkpoint("Post converted")
@@ -171,3 +170,4 @@ async def get_post_count(request: Request):
         logger.warning(f"Failed to fetch post count: {e}")
 
     return JSONResponse({"counts": {"posts": 0}}, status_code=200)
+
