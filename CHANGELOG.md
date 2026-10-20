@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Overhauled README**: Added architecture flowcharts, mobile client configuration guide, and endpoint matrix.
 
 ### Changed
-- **Project Rebranding**: Rebranded project from `Szuru-Dan` to **`SzuruRelay`** with updated container definitions (`ghcr.io/saetron/szuru-relay`) and repository remotes.
+- **Project Rebranding**: Rebranded project from `Szuru-Dan` to **`SzuruRelay`** with updated container definitions (`ghcr.io/saetron/szururelay`) and repository remotes.
 - **Docker Release Trigger**: Updated GitHub Actions build workflow to trigger on manual dispatch (`workflow_dispatch`) rather than automatic branch pushes.
 - **Dependencies**: Replaced `Flask` and `gunicorn` with `fastapi`, `uvicorn[standard]`, `httpx`, and `python-multipart`.
 

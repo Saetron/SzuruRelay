@@ -4,7 +4,7 @@
   <a href="https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12"><img src="https://img.shields.io/badge/License-EUPL%201.2-blue.svg" alt="License: EUPL 1.2"/></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white" alt="Python 3.11+"/></a>
   <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white" alt="FastAPI"/></a>
-  <a href="https://github.com/Saetron/SzuruRelay/pkgs/container/szuru-relay"><img src="https://img.shields.io/badge/Docker-GHCR-2496ED.svg?logo=docker&logoColor=white" alt="Docker Container"/></a>
+  <a href="https://github.com/Saetron/SzuruRelay/pkgs/container/szururelay"><img src="https://img.shields.io/badge/Docker-GHCR-2496ED.svg?logo=docker&logoColor=white" alt="Docker Container"/></a>
 </p>
 
 **SzuruRelay** is a high-performance, asynchronous translation proxy powered by **FastAPI**, **Uvicorn**, and **HTTPX**. It seamlessly translates Danbooru REST API requests into Szurubooru REST API calls and reformats responses on the fly into standard Danbooru JSON structures.
@@ -75,7 +75,7 @@ Create or add to your `docker-compose.yml`:
 ```yaml
 services:
   szuru-relay:
-    image: ghcr.io/saetron/szuru-relay:latest
+    image: ghcr.io/saetron/szururelay:latest
     container_name: szuru-relay
     ports:
       - "9000:9000"
@@ -104,7 +104,7 @@ docker run -d \
   -p 9000:9000 \
   -e SZURUBOORU_URL=http://127.0.0.1:8080/ \
   -e REVERSE_PROXY_MODE=false \
-  ghcr.io/saetron/szuru-relay:latest
+  ghcr.io/saetron/szururelay:latest
 ```
 
 ---

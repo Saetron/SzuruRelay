@@ -1,6 +1,6 @@
 services:
   szuru-relay:
-    image: ghcr.io/saetron/szuru-relay:latest
+    image: ghcr.io/saetron/szururelay:latest
     container_name: szuru-relay
     ports:
       - "9000:9000"
