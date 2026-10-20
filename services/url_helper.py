@@ -26,9 +26,12 @@ def build_resource_url(
     if not resource_path:
         return ""
 
-    if resource_path.startswith("http://") or resource_path.startswith("https://"):
+    if resource_path.startswith(("http://", "https://")):
         return resource_path
 
     base = base_domain or get_current_domain(request)
     clean_path = resource_path.lstrip("/")
-    return urljoin(base, clean_path)
+    if not base:
+        return clean_path
+    return f"{base}{clean_path}" if base.endswith("/") else urljoin(base, clean_path)
+

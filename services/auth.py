@@ -1,8 +1,31 @@
 import base64
 import binascii
-from typing import Tuple, Optional
+from typing import Any, Mapping, Optional, Tuple
 from starlette.requests import Request
 from utils import encode_auth_headers
+
+_LOGIN_KEYS = ("login", "user", "username")
+_KEY_KEYS = ("api_key", "password", "pass")
+
+
+def _extract_from_mapping(
+    mapping: Mapping[str, Any],
+    login: Optional[str],
+    api_key: Optional[str],
+) -> Tuple[Optional[str], Optional[str]]:
+    if not login:
+        for k in _LOGIN_KEYS:
+            val = mapping.get(k)
+            if val:
+                login = str(val)
+                break
+    if not api_key:
+        for k in _KEY_KEYS:
+            val = mapping.get(k)
+            if val:
+                api_key = str(val)
+                break
+    return login, api_key
 
 
 async def get_auth_headers(request: Request) -> Tuple[dict, Optional[str], Optional[str]]:
@@ -20,49 +43,28 @@ async def get_auth_headers(request: Request) -> Tuple[dict, Optional[str], Optio
 async def extract_auth_from_request(request: Request) -> Tuple[Optional[str], Optional[str]]:
     """
     Extract login and api_key/password from multiple possible sources:
-    1. HTTP Basic Authorization header
+    1. HTTP Basic / Token Authorization header
     2. Query string parameters (?login=...&api_key=... or ?user=...&password=...)
-    3. Form data (POST body)
-    4. JSON body
+    3. Form data or JSON body
     """
-    login = None
-    api_key = None
+    login: Optional[str] = None
+    api_key: Optional[str] = None
 
     # 1. Authorization header (Basic / Token Auth)
-    auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+    auth_header = request.headers.get("authorization")
     if auth_header:
-        if auth_header.startswith("Basic "):
+        scheme, _, param = auth_header.partition(" ")
+        if scheme in ("Basic", "Token") and param:
             try:
-                encoded_credentials = auth_header.split(" ", 1)[1].strip()
-                decoded = base64.b64decode(encoded_credentials).decode("utf-8")
+                decoded = base64.b64decode(param.strip()).decode("utf-8")
                 if ":" in decoded:
-                    login, api_key = decoded.split(":", 1)
-            except (binascii.Error, UnicodeDecodeError, ValueError):
-                pass
-        elif auth_header.startswith("Token "):
-            # If client forwarded a token header directly
-            try:
-                encoded_credentials = auth_header.split(" ", 1)[1].strip()
-                decoded = base64.b64decode(encoded_credentials).decode("utf-8")
-                if ":" in decoded:
-                    login, api_key = decoded.split(":", 1)
+                    login, _, api_key = decoded.partition(":")
             except (binascii.Error, UnicodeDecodeError, ValueError):
                 pass
 
     # 2. Query parameters
-    if not login or not api_key:
-        login = (
-            request.query_params.get("login")
-            or request.query_params.get("user")
-            or request.query_params.get("username")
-            or login
-        )
-        api_key = (
-            request.query_params.get("api_key")
-            or request.query_params.get("password")
-            or request.query_params.get("pass")
-            or api_key
-        )
+    if (not login or not api_key) and request.query_params:
+        login, api_key = _extract_from_mapping(request.query_params, login, api_key)
 
     # 3. Form data or JSON body
     if not login or not api_key:
@@ -71,36 +73,15 @@ async def extract_auth_from_request(request: Request) -> Tuple[Optional[str], Op
             try:
                 json_data = await request.json()
                 if isinstance(json_data, dict):
-                    login = (
-                        json_data.get("login")
-                        or json_data.get("user")
-                        or json_data.get("username")
-                        or login
-                    )
-                    api_key = (
-                        json_data.get("api_key")
-                        or json_data.get("password")
-                        or json_data.get("pass")
-                        or api_key
-                    )
+                    login, api_key = _extract_from_mapping(json_data, login, api_key)
             except Exception:
                 pass
         elif "form" in content_type:
             try:
                 form_data = await request.form()
-                login = (
-                    form_data.get("login")
-                    or form_data.get("user")
-                    or form_data.get("username")
-                    or login
-                )
-                api_key = (
-                    form_data.get("api_key")
-                    or form_data.get("password")
-                    or form_data.get("pass")
-                    or api_key
-                )
+                login, api_key = _extract_from_mapping(form_data, login, api_key)
             except Exception:
                 pass
 
     return login, api_key
+
