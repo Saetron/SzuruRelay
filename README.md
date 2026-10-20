@@ -1,8 +1,8 @@
-# Szuru-Dan Docker
+# SzuruRelay
 
 [![License: EUPL 1.2](https://img.shields.io/badge/License-EUPL%201.2-blue.svg)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12)
 
-A production-ready API translation proxy that maps Szurubooru API endpoints into Danbooru-style responses, allowing third-party Danbooru mobile and desktop clients to connect directly to your Szurubooru server.
+A high-performance, asynchronous API translation proxy written in Python (FastAPI + Uvicorn) that maps Szurubooru API endpoints into Danbooru-style responses, allowing third-party Danbooru mobile and desktop clients to connect directly to your personal or self-hosted Szurubooru server.
 
 ---
 
@@ -10,7 +10,7 @@ A production-ready API translation proxy that maps Szurubooru API endpoints into
 
 - **Danbooru Compatibility**: Maps Danbooru requests to Szurubooru queries including ratings (`rating:s/q/e`), sort orders (`order:score`, `order:favcount`, `order:id`), and tags.
 - **Client Support**: Validated with [AnimeBoxes](https://www.animebox.es/) (iOS), [Boorusama](https://github.com/khoadng/Boorusama) (Android/Desktop), and [BooruHub / Flexbooru](https://github.com/flexbooru/flexbooru) (Android).
-- **Reverse Proxy Media Streaming**: Built-in HTTP range request proxying for fast image loading and video streaming.
+- **Reverse Proxy Media Streaming**: Built-in HTTP range request proxying for fast image loading and video streaming with chunked byte-range requests.
 - **12-Factor Configuration**: Configure via environment variables or `config.ini`.
 - **Production ASGI Server**: Powered by FastAPI, Uvicorn, and async HTTPX connection pooling.
 
@@ -25,9 +25,9 @@ Create a `docker-compose.yml` file:
 
 ```yaml
 services:
-  szuru-dan:
-    image: ghcr.io/saetron/szuru-dan-docker:latest
-    container_name: szuru-dan
+  szuru-relay:
+    image: ghcr.io/saetron/szuru-relay:latest
+    container_name: szuru-relay
     ports:
       - "9000:9000"
     environment:
@@ -47,19 +47,19 @@ docker compose up -d
 
 ```bash
 docker run -d \
-  --name szuru-dan \
+  --name szuru-relay \
   -p 9000:9000 \
   -e SZURUBOORU_URL=http://127.0.0.1:8080/ \
   -e REVERSE_PROXY_MODE=false \
-  ghcr.io/saetron/szuru-dan-docker:latest
+  ghcr.io/saetron/szuru-relay:latest
 ```
 
 ### Option 2: Local Installation
 
 #### 1. Clone the repository
 ```bash
-git clone https://github.com/Saetron/Szuru-Dan-Docker.git
-cd Szuru-Dan-Docker
+git clone https://github.com/Saetron/SzuruRelay.git
+cd SzuruRelay
 ```
 
 #### 2. Install dependencies
@@ -78,18 +78,18 @@ uvicorn app:app --host 0.0.0.0 --port 9000 --workers 2
 
 ## Configuration
 
-You can configure Szuru-Dan using **Environment Variables** (recommended for Docker) or a `config.ini` file:
+You can configure SzuruRelay using **Environment Variables** (recommended for Docker) or a `config.ini` file:
 
 ### Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
 | `SZURUBOORU_URL` | `http://127.0.0.1:8080/` | Base URL of your Szurubooru instance |
-| `PORT` | `9000` | Port on which Szuru-Dan listens |
+| `PORT` | `9000` | Port on which SzuruRelay listens |
 | `REVERSE_PROXY_MODE` | `false` | When true, image/thumbnail URLs point to this proxy server |
 | `DOMAIN_URL` | `""` | Custom public domain URL if not using reverse proxy mode |
 | `ENABLE_TIMING_LOGS` | `false` | Logs performance timing metrics for debugging |
-| `DEBUG` | `false` | Enable Flask debug mode (development only) |
+| `DEBUG` | `false` | Enable debug reload mode (development only) |
 
 ### INI File (`config.ini`)
 Copy `config_.ini` to `config.ini`:

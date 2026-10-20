@@ -1,8 +1,8 @@
-# AGENTS.md — Contributor & AI Agent Guide for Szuru-Dan
+# AGENTS.md — Contributor & AI Agent Guide for SzuruRelay
 
 ## 1. Project Overview & Architecture
 
-**Szuru-Dan** is a high-performance, asynchronous API translation proxy written in Python (**FastAPI + Uvicorn + HTTPX**). It translates Danbooru REST API requests into Szurubooru REST API calls and converts responses back into Danbooru-compatible formats.
+**SzuruRelay** is a high-performance, asynchronous API translation proxy written in Python (**FastAPI + Uvicorn + HTTPX**). It translates Danbooru REST API requests into Szurubooru REST API calls and converts responses back into Danbooru-compatible formats.
 
 This allows third-party Danbooru client applications (such as **AnimeBoxes** on iOS, **Boorusama** on Android/Desktop, and **BooruHub / Flexbooru** on Android) to connect directly to personal or self-hosted Szurubooru instances.
 
@@ -19,7 +19,7 @@ This allows third-party Danbooru client applications (such as **AnimeBoxes** on 
 ## 2. Repository Layout
 
 ```
-Szuru-Dan-Docker/
+SzuruRelay/
 ├── app.py                      # Application factory (create_app), lifespan context, /health route
 ├── config.py                   # Configuration management (environment variables & config.ini)
 ├── config_.ini                 # Template INI configuration file
@@ -113,7 +113,7 @@ Configuration is managed in `config.py` using cascading priority: **Environment 
 | Environment Variable | INI Key (`[API]`) | Default | Description |
 |---|---|---|---|
 | `SZURUBOORU_URL` | `backend_url` | `http://127.0.0.1:8080/` | Base URL of Szurubooru instance |
-| `PORT` | `port` | `9000` | Port for the Szuru-Dan proxy |
+| `PORT` | `port` | `9000` | Port for the SzuruRelay proxy |
 | `REVERSE_PROXY_MODE` | `reverse_proxy_mode` | `false` | When `true`, media URLs point back to this proxy for streaming |
 | `DOMAIN_URL` | `domain_url` | `""` | Custom domain if not reverse proxying (falls back to `SZURUBOORU_URL`) |
 | `ENABLE_TIMING_LOGS` | `enable_timing_logs` | `false` | Logs performance timing metrics for profiling |
@@ -157,8 +157,8 @@ uvicorn app:app --host 0.0.0.0 --port 9000 --workers 2
 
 **Docker Build & Run:**
 ```bash
-docker build -t szuru-dan .
-docker run -p 9000:9000 -e SZURUBOORU_URL=http://host.docker.internal:8080/ szuru-dan
+docker build -t szuru-relay .
+docker run -p 9000:9000 -e SZURUBOORU_URL=http://host.docker.internal:8080/ szuru-relay
 ```
 
 ---
@@ -174,7 +174,7 @@ The GitHub Actions workflow at [`.github/workflows/docker-build.yml`](.github/wo
   3. Automatically bumps patch version in `VERSION`.
   4. Commits `VERSION` with message `chore(release): bump version to X.Y.Z [skip ci]`.
   5. Creates and pushes git tag `vX.Y.Z`.
-  6. Builds multi-platform Docker image and pushes to GitHub Container Registry (`ghcr.io/saetron/szuru-dan-docker`).
+  6. Builds multi-platform Docker image and pushes to GitHub Container Registry (`ghcr.io/${{ github.repository }}`).
   7. Tags Docker images with `:latest`, `:X.Y.Z`, and semver patterns.
 
 ---

@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="Szuru-Dan",
+        title="SzuruRelay",
         description="Danbooru to Szurubooru API Translation Proxy",
         version=__version__,
         lifespan=lifespan,

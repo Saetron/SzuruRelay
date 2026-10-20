@@ -1,7 +1,7 @@
 services:
-  szuru-dan:
-    image: ghcr.io/saetron/szuru-dan-docker:latest
-    container_name: szuru-dan
+  szuru-relay:
+    image: ghcr.io/saetron/szuru-relay:latest
+    container_name: szuru-relay
     ports:
       - "9000:9000"
     environment:
