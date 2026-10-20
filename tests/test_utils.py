@@ -3,9 +3,17 @@ from utils import (
     convert_back_rating,
     parse_query,
     parse_tags,
+    parse_tags_str,
+    strip_json_suffix,
     tags_str,
     encode_auth_headers,
 )
+
+
+def test_strip_json_suffix():
+    assert strip_json_suffix("123.json") == "123"
+    assert strip_json_suffix("123") == "123"
+    assert strip_json_suffix("alice.json") == "alice"
 
 
 def test_convert_rating():
@@ -48,34 +56,26 @@ def test_parse_query_orders():
 def test_parse_query_favorites_and_uploader():
     assert parse_query("ordfav:alice") == "fav:alice"
     assert parse_query("uploader:bob") == "user:bob"
+    assert parse_query("-uploader:bob") == "-user:bob"
 
 
 def test_parse_tags():
     assert parse_tags("tag1, tag2, [tag3]") == ["tag1", "tag2", "tag3"]
     assert parse_tags(["tag1", "", "tag2"]) == ["tag1", "tag2"]
     assert parse_tags("") == []
+    assert parse_tags_str("tag1, 'tag2', \"tag3\"") == "tag1 tag2 tag3"
 
 
 def test_tags_str():
     tags = [
         {"names": ["cat", "feline"], "category": "general"},
         {"names": ["hat"], "category": "general"},
+        "raw_tag",
     ]
-    assert tags_str(tags) == "cat hat"
+    assert tags_str(tags) == "cat hat raw_tag"
 
 
 def test_encode_auth_headers():
     encoded = encode_auth_headers("user", "pass:word")
     assert encoded == "dXNlcjpwYXNzOndvcmQ="
 
-
-if __name__ == "__main__":
-    test_convert_rating()
-    test_convert_back_rating()
-    test_parse_query_ratings()
-    test_parse_query_orders()
-    test_parse_query_favorites_and_uploader()
-    test_parse_tags()
-    test_tags_str()
-    test_encode_auth_headers()
-    print("All test_utils passed!")

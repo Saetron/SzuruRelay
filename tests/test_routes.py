@@ -238,3 +238,69 @@ def test_admin_timing_endpoints(client):
     r4 = client.post("/admin/timing/disable")
     assert r4.status_code == 200
     assert r4.json()["status"] == "disabled"
+
+
+@patch("routes.favorites.get_http_client")
+def test_get_favorites_concurrent_batch(mock_get_client, client):
+    mock_client = AsyncMock()
+
+    async def side_effect(url, **kwargs):
+        if url.endswith("/post/10"):
+            return httpx.Response(
+                200,
+                json={
+                    "id": 10,
+                    "creationTime": "2023-01-01T00:00:00Z",
+                    "favoritedBy": [{"name": "alice"}],
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
+                "id": 20,
+                "creationTime": "2023-01-02T00:00:00Z",
+                "favoritedBy": [{"name": "bob"}],
+            },
+        )
+
+    mock_client.get.side_effect = side_effect
+    mock_get_client.return_value = mock_client
+
+    response = client.get(
+        "/favorites.json?search[post_id]=10,20&login=alice&api_key=secret"
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["post_id"] == 10
+
+
+@patch("routes.proxy.get_http_client")
+def test_proxy_streaming_success(mock_get_client, client):
+    mock_client = MagicMock()
+    mock_client.build_request.return_value = httpx.Request(
+        "GET", "http://127.0.0.1:8080/data/sample.mp4"
+    )
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 206
+    mock_resp.headers = {
+        "content-type": "video/mp4",
+        "content-length": "4",
+        "content-range": "bytes 0-3/100",
+    }
+
+    async def fake_iter(chunk_size=16384):
+        yield b"data"
+
+    mock_resp.aiter_bytes = fake_iter
+    mock_resp.aclose = AsyncMock()
+    mock_client.send = AsyncMock(return_value=mock_resp)
+    mock_get_client.return_value = mock_client
+
+    response = client.get("/data/sample.mp4", headers={"Range": "bytes=0-3"})
+    assert response.status_code == 206
+    assert response.content == b"data"
+    assert response.headers["Accept-Ranges"] == "bytes"
+    mock_resp.aclose.assert_awaited_once()
+

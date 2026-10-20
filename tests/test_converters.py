@@ -78,7 +78,15 @@ def test_convert_user_format():
     assert dan_user["id"] == 5
     assert dan_user["post_upload_count"] == 15
 
-    # Test empty results fallback without crashing
+    # Test empty results fallback without crashing and ensure returned dict is a fresh copy
     empty_user = convert_user_format({"results": []})
     assert empty_user["name"] == "Anonymous"
     assert empty_user["id"] == 1
+    empty_user["id"] = 999
+    assert convert_user_format({})["id"] == 1
+
+
+def test_is_post_favorited_by_own_favorite_and_strings():
+    assert is_post_favorited_by({"ownFavorite": True}, "anyone") is True
+    assert is_post_favorited_by({"favoritedBy": ["Alice", "Bob"]}, "bob") is True
+
