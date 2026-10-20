@@ -1,12 +1,14 @@
 import logging
-from flask import Blueprint, request, jsonify
-import requests
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+import httpx
 from config import config
 from services.auth import get_auth_headers
 from models.converters import category_map
+from services.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
-tags_bp = Blueprint("tags", __name__)
+tags_router = APIRouter()
 
 
 def _get_tag_category_num(cat_raw) -> int:
@@ -16,18 +18,18 @@ def _get_tag_category_num(cat_raw) -> int:
     return category_map.get(cat_str, 0)
 
 
-@tags_bp.route("/tags/autocomplete.json", methods=["GET"])
-@tags_bp.route("/tags/autocomplete", methods=["GET"])
-@tags_bp.route("/autocomplete.json", methods=["GET"])
-@tags_bp.route("/autocomplete", methods=["GET"])
-def autocomplete_tags():
-    headers, _, _ = get_auth_headers()
+@tags_router.get("/tags/autocomplete.json")
+@tags_router.get("/tags/autocomplete")
+@tags_router.get("/autocomplete.json")
+@tags_router.get("/autocomplete")
+async def autocomplete_tags(request: Request):
+    headers, _, _ = await get_auth_headers(request)
 
     query = (
-        request.args.get("search[query]")
-        or request.args.get("search[name_matches]")
-        or request.args.get("term")
-        or request.args.get("q")
+        request.query_params.get("search[query]")
+        or request.query_params.get("search[name_matches]")
+        or request.query_params.get("term")
+        or request.query_params.get("q")
         or ""
     ).strip()
 
@@ -40,16 +42,17 @@ def autocomplete_tags():
         search_pattern = "*"
 
     try:
-        limit = min(int(request.args.get("limit", 10)), 50)
+        limit = min(int(request.query_params.get("limit", 10)), 50)
     except (ValueError, TypeError):
         limit = 10
 
+    client = get_http_client()
     try:
-        response = requests.get(
+        response = await client.get(
             f"{config.SZURUBOORU_API_URL}/tags",
             params={"query": f"{search_pattern} sort:usages", "limit": limit},
             headers=headers,
-            timeout=10,
+            timeout=10.0,
         )
         if response.status_code == 200:
             data = response.json()
@@ -70,39 +73,43 @@ def autocomplete_tags():
                         "post_count": tag.get("usages", 0),
                     }
                 )
-            return jsonify(auto_complete_tags), 200
+            return JSONResponse(auto_complete_tags, status_code=200)
         else:
-            return jsonify({"message": "Failed to fetch tags"}), response.status_code
-    except requests.exceptions.RequestException as e:
+            return JSONResponse(
+                {"message": "Failed to fetch tags"},
+                status_code=response.status_code,
+            )
+    except httpx.RequestError as e:
         logger.error(f"Error autocompleting tags: {e}")
-        return jsonify([]), 200
+        return JSONResponse([], status_code=200)
 
 
-@tags_bp.route("/tags.json", methods=["GET"])
-@tags_bp.route("/tags", methods=["GET"])
-def search_tags():
-    headers, _, _ = get_auth_headers()
+@tags_router.get("/tags.json")
+@tags_router.get("/tags")
+async def search_tags(request: Request):
+    headers, _, _ = await get_auth_headers(request)
 
     name_query = (
-        request.args.get("search[name_matches]")
-        or request.args.get("search[name]")
-        or request.args.get("name")
+        request.query_params.get("search[name_matches]")
+        or request.query_params.get("search[name]")
+        or request.query_params.get("name")
         or ""
     ).strip()
 
     try:
-        limit = min(int(request.args.get("limit", 20)), 100)
+        limit = min(int(request.query_params.get("limit", 20)), 100)
     except (ValueError, TypeError):
         limit = 20
 
     query_str = f"{name_query} sort:usages" if name_query else "sort:usages"
 
+    client = get_http_client()
     try:
-        response = requests.get(
+        response = await client.get(
             f"{config.SZURUBOORU_API_URL}/tags",
             params={"query": query_str, "limit": limit},
             headers=headers,
-            timeout=10,
+            timeout=10.0,
         )
         if response.status_code == 200:
             data = response.json()
@@ -123,9 +130,9 @@ def search_tags():
                         "updated_at": "2020-01-01T00:00:00Z",
                     }
                 )
-            return jsonify(tags_list), 200
+            return JSONResponse(tags_list, status_code=200)
         else:
-            return jsonify([]), response.status_code
-    except requests.exceptions.RequestException as e:
+            return JSONResponse([], status_code=response.status_code)
+    except httpx.RequestError as e:
         logger.error(f"Error fetching tags: {e}")
-        return jsonify([]), 200
+        return JSONResponse([], status_code=200)

@@ -1,131 +1,143 @@
 import logging
-from flask import Blueprint, request, jsonify
-import requests
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+import httpx
 from config import config
 from services.auth import get_auth_headers
 from models.converters import convert_user_format
+from services.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
-users_bp = Blueprint("users", __name__)
+users_router = APIRouter()
 
 
-@users_bp.route("/users/<user_identifier>.json", methods=["GET"])
-@users_bp.route("/users/<user_identifier>", methods=["GET"])
-def get_user(user_identifier):
-    headers, login, _ = get_auth_headers()
-    target_user = user_identifier
+@users_router.get("/users/{user_identifier}.json")
+@users_router.get("/users/{user_identifier}")
+async def get_user(user_identifier: str, request: Request):
+    headers, login, _ = await get_auth_headers(request)
+    clean_id = (
+        user_identifier[:-5]
+        if user_identifier.endswith(".json")
+        else user_identifier
+    )
+    target_user = clean_id
     if target_user.isdigit() and login:
         target_user = login
 
+    client = get_http_client()
     try:
         # First try direct /user/<name>
-        response = requests.get(
+        response = await client.get(
             f"{config.SZURUBOORU_API_URL}/user/{target_user}",
             headers=headers,
-            timeout=10,
+            timeout=10.0,
         )
         if response.status_code == 200:
             user_obj = response.json()
             profile = convert_user_format(user_obj)
-            if user_identifier.isdigit():
-                profile["id"] = int(user_identifier)
-            return jsonify(profile), 200
+            if clean_id.isdigit():
+                profile["id"] = int(clean_id)
+            return JSONResponse(profile, status_code=200)
 
         # Fallback to /users?query=<name>
-        fallback_resp = requests.get(
+        fallback_resp = await client.get(
             f"{config.SZURUBOORU_API_URL}/users",
             params={"query": target_user},
             headers=headers,
-            timeout=10,
+            timeout=10.0,
         )
         if fallback_resp.status_code == 200:
             data = fallback_resp.json()
             results = data.get("results", [])
             if results:
                 profile = convert_user_format(results[0])
-                if user_identifier.isdigit():
-                    profile["id"] = int(user_identifier)
-                return jsonify(profile), 200
+                if clean_id.isdigit():
+                    profile["id"] = int(clean_id)
+                return JSONResponse(profile, status_code=200)
 
         if response.status_code in (401, 403):
-            return jsonify({"message": "Access denied"}), response.status_code
+            return JSONResponse(
+                {"message": "Access denied"}, status_code=response.status_code
+            )
 
-        return jsonify({"message": "Profile not found"}), 404
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error fetching user {user_identifier}: {e}")
-        return jsonify(convert_user_format({})), 200
+        return JSONResponse({"message": "Profile not found"}, status_code=404)
+    except httpx.RequestError as e:
+        logger.error(f"Error fetching user {clean_id}: {e}")
+        return JSONResponse(convert_user_format({}), status_code=200)
 
 
-@users_bp.route("/users.json", methods=["GET"])
-@users_bp.route("/users", methods=["GET"])
-def search_users():
-    headers, login, _ = get_auth_headers()
+@users_router.get("/users.json")
+@users_router.get("/users")
+async def search_users(request: Request):
+    headers, login, _ = await get_auth_headers(request)
     name_query = (
-        request.args.get("search[name_matches]")
-        or request.args.get("search[name]")
-        or request.args.get("name")
+        request.query_params.get("search[name_matches]")
+        or request.query_params.get("search[name]")
+        or request.query_params.get("name")
         or login
         or ""
     ).strip()
 
+    client = get_http_client()
     try:
-        response = requests.get(
+        response = await client.get(
             f"{config.SZURUBOORU_API_URL}/users",
             params={"query": name_query} if name_query else {},
             headers=headers,
-            timeout=10,
+            timeout=10.0,
         )
         if response.status_code == 200:
             data = response.json()
             users_list = []
             for item in data.get("results", []):
                 users_list.append(convert_user_format(item))
-            return jsonify(users_list), 200
+            return JSONResponse(users_list, status_code=200)
         else:
-            return jsonify([]), response.status_code
-    except requests.exceptions.RequestException as e:
+            return JSONResponse([], status_code=response.status_code)
+    except httpx.RequestError as e:
         logger.error(f"Error searching users: {e}")
-        return jsonify([]), 200
+        return JSONResponse([], status_code=200)
 
 
-@users_bp.route("/profile", methods=["GET"])
-@users_bp.route("/profile.json", methods=["GET"])
-def get_profile():
-    headers, login, _ = get_auth_headers()
+@users_router.get("/profile")
+@users_router.get("/profile.json")
+async def get_profile(request: Request):
+    headers, login, _ = await get_auth_headers(request)
     if not login:
-        return jsonify(convert_user_format({})), 200
+        return JSONResponse(convert_user_format({}), status_code=200)
 
+    client = get_http_client()
     try:
         # Try direct user endpoint first
-        response = requests.get(
+        response = await client.get(
             f"{config.SZURUBOORU_API_URL}/user/{login}",
             headers=headers,
-            timeout=10,
+            timeout=10.0,
         )
         if response.status_code == 200:
             user_obj = response.json()
-            return jsonify(convert_user_format(user_obj)), 200
+            return JSONResponse(convert_user_format(user_obj), status_code=200)
 
         # Fallback to searching users
-        fallback_resp = requests.get(
+        fallback_resp = await client.get(
             f"{config.SZURUBOORU_API_URL}/users",
             params={"query": login},
             headers=headers,
-            timeout=10,
+            timeout=10.0,
         )
         if fallback_resp.status_code == 200:
             user_profile = fallback_resp.json()
             results = user_profile.get("results", [])
             if results:
-                return jsonify(convert_user_format(results[0])), 200
+                return JSONResponse(convert_user_format(results[0]), status_code=200)
 
         if response.status_code in (401, 403):
-            return (
-                jsonify({"message": "Invalid username or password", "success": False}),
-                response.status_code,
+            return JSONResponse(
+                {"message": "Invalid username or password", "success": False},
+                status_code=response.status_code,
             )
 
-        return jsonify(convert_user_format({})), 200
-    except requests.exceptions.RequestException as e:
+        return JSONResponse(convert_user_format({}), status_code=200)
+    except httpx.RequestError as e:
         logger.error(f"Error fetching profile: {e}")
-        return jsonify(convert_user_format({})), 200
+        return JSONResponse(convert_user_format({}), status_code=200)

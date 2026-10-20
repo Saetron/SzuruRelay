@@ -1,28 +1,47 @@
 import logging
-from flask import Blueprint, request, jsonify
-import requests
+from typing import Optional
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+import httpx
 from config import config
 from services.auth import get_auth_headers
 from models.converters import is_post_favorited_by
+from services.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
-favorites_bp = Blueprint("favorites", __name__)
+favorites_router = APIRouter()
 
 
-def _extract_post_id():
+async def _extract_post_id(request: Request) -> Optional[int]:
     """Safely extract post_id from query params, form values, or JSON body"""
-    post_id = request.values.get("post_id")
-    if not post_id and request.is_json:
-        json_data = request.get_json(silent=True) or {}
-        post_id = json_data.get("post_id")
+    post_id = request.query_params.get("post_id")
     if not post_id:
-        raw_data = request.get_data(as_text=True)
-        if raw_data:
-            if "post_id=" in raw_data:
-                for part in raw_data.split("&"):
+        content_type = request.headers.get("content-type", "").lower()
+        if "application/json" in content_type:
+            try:
+                json_data = await request.json()
+                if isinstance(json_data, dict):
+                    post_id = json_data.get("post_id")
+            except Exception:
+                pass
+        elif "form" in content_type:
+            try:
+                form_data = await request.form()
+                post_id = form_data.get("post_id")
+            except Exception:
+                pass
+
+    if not post_id:
+        try:
+            raw_body = (await request.body()).decode("utf-8", errors="ignore")
+            if "post_id=" in raw_body:
+                for part in raw_body.split("&"):
                     if part.startswith("post_id="):
                         post_id = part.split("=", 1)[1]
                         break
+        except Exception:
+            pass
+
     if post_id is not None:
         try:
             return int(post_id)
@@ -31,98 +50,107 @@ def _extract_post_id():
     return None
 
 
-@favorites_bp.route("/favorites.json", methods=["POST"])
-@favorites_bp.route("/favorites", methods=["POST"])
-def create_favorite():
-    post_id = _extract_post_id()
+@favorites_router.post("/favorites.json")
+@favorites_router.post("/favorites")
+@favorites_router.post("/post_votes.json")
+@favorites_router.post("/post_votes")
+async def create_favorite(request: Request):
+    post_id = await _extract_post_id(request)
     if not post_id:
-        return jsonify({"message": "post_id is required"}), 400
+        return JSONResponse({"message": "post_id is required"}, status_code=400)
 
-    headers, _, _ = get_auth_headers()
+    headers, _, _ = await get_auth_headers(request)
+    client = get_http_client()
 
     try:
-        response = requests.post(
+        response = await client.post(
             f"{config.SZURUBOORU_API_URL}/post/{post_id}/favorite",
             headers=headers,
-            timeout=15,
+            timeout=15.0,
         )
         if response.status_code in (200, 201):
-            return (
-                jsonify(
-                    {
-                        "id": post_id,
-                        "user_id": 1,
-                        "post_id": post_id,
-                        "message": "Favorite created",
-                    }
-                ),
-                200,
+            return JSONResponse(
+                {
+                    "id": post_id,
+                    "user_id": 1,
+                    "post_id": post_id,
+                    "message": "Favorite created",
+                },
+                status_code=200,
             )
         else:
-            return (
-                jsonify({"message": "Failed to create favorite"}),
-                response.status_code,
+            return JSONResponse(
+                {"message": "Failed to create favorite"},
+                status_code=response.status_code,
             )
-    except requests.exceptions.RequestException as e:
+    except httpx.RequestError as e:
         logger.error(f"Error creating favorite for post {post_id}: {e}")
-        return jsonify({"message": "API request failed"}), 500
+        return JSONResponse({"message": "API request failed"}, status_code=500)
 
 
-@favorites_bp.route("/favorites/<int:post_id>.json", methods=["DELETE"])
-@favorites_bp.route("/favorites/<int:post_id>", methods=["DELETE"])
-def delete_favorite(post_id):
-    headers, _, _ = get_auth_headers()
+@favorites_router.delete("/favorites/{post_id}.json")
+@favorites_router.delete("/favorites/{post_id}")
+async def delete_favorite(post_id: str, request: Request):
+    clean_id = post_id[:-5] if post_id.endswith(".json") else post_id
+    try:
+        pid = int(clean_id)
+    except ValueError:
+        return JSONResponse({"message": "Invalid post ID"}, status_code=400)
+
+    headers, _, _ = await get_auth_headers(request)
+    client = get_http_client()
 
     try:
-        response = requests.delete(
-            f"{config.SZURUBOORU_API_URL}/post/{post_id}/favorite",
+        response = await client.delete(
+            f"{config.SZURUBOORU_API_URL}/post/{pid}/favorite",
             headers=headers,
-            timeout=15,
+            timeout=15.0,
         )
         if response.status_code in (200, 204):
-            return jsonify({"message": "Favorite deleted"}), 200
+            return JSONResponse({"message": "Favorite deleted"}, status_code=200)
         else:
-            return (
-                jsonify({"message": "Failed to delete favorite"}),
-                response.status_code,
+            return JSONResponse(
+                {"message": "Failed to delete favorite"},
+                status_code=response.status_code,
             )
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error deleting favorite for post {post_id}: {e}")
-        return jsonify({"message": "API request failed"}), 500
+    except httpx.RequestError as e:
+        logger.error(f"Error deleting favorite for post {pid}: {e}")
+        return JSONResponse({"message": "API request failed"}, status_code=500)
 
 
-@favorites_bp.route("/post_votes.json", methods=["GET"])
-@favorites_bp.route("/favorites.json", methods=["GET"])
-def get_favorites():
-    headers, login, _ = get_auth_headers()
+@favorites_router.get("/post_votes.json")
+@favorites_router.get("/post_votes")
+@favorites_router.get("/favorites.json")
+@favorites_router.get("/favorites")
+async def get_favorites(request: Request):
+    headers, login, _ = await get_auth_headers(request)
 
     raw_post_ids = (
-        request.args.get("search[post_id]")
-        or request.args.get("post_id")
+        request.query_params.get("search[post_id]")
+        or request.query_params.get("post_id")
         or ""
     )
 
     clean_ids = []
     if raw_post_ids:
         # Split by comma, plus, or space
-        normalized = (
-            raw_post_ids.replace(",", " ").replace("+", " ")
-        )
+        normalized = raw_post_ids.replace(",", " ").replace("+", " ")
         for item in normalized.split():
             item_str = item.strip()
             if item_str.isdigit():
                 clean_ids.append(int(item_str))
 
     favorites = []
+    client = get_http_client()
 
     # If specific post IDs were requested, check them
     if clean_ids:
         for pid in clean_ids:
             try:
-                res = requests.get(
+                res = await client.get(
                     f"{config.SZURUBOORU_API_URL}/post/{pid}",
                     headers=headers,
-                    timeout=5,
+                    timeout=5.0,
                 )
                 if res.status_code == 200:
                     szuru_post = res.json()
@@ -138,16 +166,16 @@ def get_favorites():
                                 "is_deleted": False,
                             }
                         )
-            except requests.exceptions.RequestException:
+            except httpx.RequestError:
                 continue
     elif login:
         # If no specific post_ids requested, fetch user's favorites from Szurubooru
         try:
-            res = requests.get(
+            res = await client.get(
                 f"{config.SZURUBOORU_API_URL}/posts",
                 params={"query": f"fav:{login}", "limit": 100},
                 headers=headers,
-                timeout=15,
+                timeout=15.0,
             )
             if res.status_code == 200:
                 data = res.json()
@@ -165,7 +193,7 @@ def get_favorites():
                                 "is_deleted": False,
                             }
                         )
-        except requests.exceptions.RequestException as e:
+        except httpx.RequestError as e:
             logger.warning(f"Failed to fetch favorites for user {login}: {e}")
 
-    return jsonify(favorites), 200
+    return JSONResponse(favorites, status_code=200)
