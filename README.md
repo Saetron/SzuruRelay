@@ -211,11 +211,13 @@ To connect your favorite Danbooru app to SzuruRelay:
 
 ## Acknowledgements
 
-Special thanks to **[MILES-FAN](https://github.com/MILES-FAN)** and the original **[Szuru-Dan](https://github.com/MILES-FAN/Szuru-Dan)** project for the initial concept and inspiration of creating an API translation proxy between Danbooru clients and Szurubooru.
+Special thanks to **[MILES-FAN](https://github.com/MILES-FAN)** and the original **[Szuru-Dan](https://github.com/MILES-FAN/Szuru-Dan)** project for the initial concept and foundation of creating an API translation proxy between Danbooru clients and Szurubooru.
 
 ---
 
 ## License
 
 This project is licensed under the **European Union Public Licence v1.2** ([EUPL-1.2](LICENSE)).
+
+Portions of this software were originally derived from [Szuru-Dan](https://github.com/MILES-FAN/Szuru-Dan) and are licensed under the **Apache License, Version 2.0** ([Apache-2.0](LICENSE-APACHE)). See [NOTICE](NOTICE) for complete attribution and licensing details.
 

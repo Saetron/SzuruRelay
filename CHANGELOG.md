@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- **Licensing Compliance & Attribution**: Added `NOTICE` and `LICENSE-APACHE` documenting derivative origins from Szuru-Dan under Apache-2.0 and clarifying EUPL-1.2 licensing for SzuruRelay modifications.
+
+---
+
 ## [2.1.1] - 2026-10-21
 
 ### Changed

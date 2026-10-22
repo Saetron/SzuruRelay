@@ -1,0 +1,16 @@
+SzuruRelay
+Copyright 2026 Saetron
+
+This product includes software originally developed by MILES-FAN as part of
+the Szuru-Dan project (https://github.com/MILES-FAN/Szuru-Dan).
+Original work Copyright (c) MILES-FAN, licensed under the Apache License,
+Version 2.0 (see LICENSE-APACHE).
+
+Portions of this software have been derived from and subsequently modified,
+extended, and refactored from Szuru-Dan:
+- Original project: Szuru-Dan (https://github.com/MILES-FAN/Szuru-Dan)
+- Original license: Apache License, Version 2.0 (see LICENSE-APACHE)
+
+All subsequent modifications, architectural migrations (FastAPI), enhancements,
+and tests in SzuruRelay are licensed under the European Union Public Licence
+(EUPL-1.2) (see LICENSE).
